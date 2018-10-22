@@ -10,7 +10,6 @@ var USUARIO_ACTUAL = sessionStorage.getItem('user');
 	var chats = [];
 	var index = 0;
 	div_user_list = $('#user_list_content ul');
-	
 	var usuarios = [];
 	var usuario = [];
 	var div;
@@ -58,7 +57,7 @@ var USUARIO_ACTUAL = sessionStorage.getItem('user');
 	    });
 	});
 	
-    abrirAlRecibir()
+    abrirAlRecibir();
     //Abrir ventana de chat al recibir mensaje
     function abrirAlRecibir(){
         firebase.database().ref().child("user-messages").child(USUARIO_ACTUAL).once('value').then(function(snapshot) {
@@ -73,7 +72,57 @@ var USUARIO_ACTUAL = sessionStorage.getItem('user');
 				});
         });
     }
-    
+
+    //Mostrar mensajes de conversaciones anteriores al abrir el chat
+    function mostrarMensajes(chat){
+		firebase.database().ref().child("user-messages").child(USUARIO_ACTUAL).once('value').then(function(snapshot) {
+			snapshot.forEach(function(child) {
+				limpiarVentanaChat(chat);
+				firebase.database().ref().child("Mensajes").child(child.key).once('value').then(function(childsnapshot) {
+					var id;
+					if(child.val() == "1"){
+						id = usuario[0].nombre.split(" ")[0];
+						user = buscarUsuario(childsnapshot.val().to);
+					} else if(child.val() == "2"){
+						user = buscarUsuario(childsnapshot.val().from);
+						id = user.nombre.split(" ")[0];
+					}
+					if (user.user == usuarios[index].user){
+						if(chat.length){
+							chat.chatbox("option", "boxManager").addMsg(id, childsnapshot.val().message);
+						} else{
+							div.chatbox("option", "boxManager").addMsg(id, childsnapshot.val().message);
+						}
+					}
+				});
+			});
+		});
+    }
+
+    actualizarConversacionChat();
+//Actualiza la conversacion de chat cada vez que se manda un mensaje
+    function actualizarConversacionChat(){
+        firebase.database().ref().child("user-messages").child(USUARIO_ACTUAL).once('value').then(function(snapshot) {
+				firebase.database().ref().child("Mensajes").child(snapshot.key).on('child_added', function(childsnapshot) {
+                    var id;
+					if(snapshot.val() == "1"){
+						user = buscarUsuario(childsnapshot.val().to);
+					} else if(snapshot.val() == "2"){
+						user = buscarUsuario(childsnapshot.val().from);
+					}
+					var index = buscarUsuario(user.user);
+                    let chat = $("#" + usuarios[index].user);
+					mostrarMensajes(chat);
+				});
+        });
+    }
+
+    function limpiarVentanaChat(chat){
+        if(chat){
+            chat.empty();
+        }
+    }
+
 	function buscarUsuario(user){
 		var us;
 		for(i = 0; i < usuarios.length; i++){
@@ -123,32 +172,8 @@ var USUARIO_ACTUAL = sessionStorage.getItem('user');
 						data[val] = "2";
 						ref_storage.child(user.user).update(data)
 						newRef.set(message);
-						
+                        mostrarMensajes(chat);
 					}});
-        //Mostrar mensajes de conversaciones anteriores al abrir el chat
-		firebase.database().ref().child("user-messages").child(USUARIO_ACTUAL).once('value').then(function(snapshot) {
-			snapshot.forEach(function(child) {
-				if(chat){
-					chat.empty();
-				}
-				firebase.database().ref().child("Mensajes").child(child.key).once('value').then(function(childsnapshot) {
-					var id;
-					if(child.val() == "1"){
-						id = usuario[0].nombre.split(" ")[0];
-						user = buscarUsuario(childsnapshot.val().to);
-					} else if(child.val() == "2"){
-						user = buscarUsuario(childsnapshot.val().from);
-						id = user.nombre.split(" ")[0];
-					}
-					if (user.user == usuarios[index].user){
-						if(chat.length){
-							chat.chatbox("option", "boxManager").addMsg(id, childsnapshot.val().message);
-						} else{
-							div.chatbox("option", "boxManager").addMsg(id, childsnapshot.val().message);
-						}
-					}
-				});
-			});
-		});
+            mostrarMensajes(chat);
 		}
 	}
